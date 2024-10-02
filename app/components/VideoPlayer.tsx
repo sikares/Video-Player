@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from 'react'
 export interface Timestamp {
   time: number;
   label: string;
+  countdownTime: number;
   triggered: boolean;
 }
 
@@ -34,36 +35,34 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [timestamps, setTimestamps] = useState<Timestamp[]>(initialTimestamps)
 
   useEffect(() => {
-    const video = videoRef.current
+    const video = videoRef.current;
 
-    if (!video) return
+    if (!video) return;
 
     const handleTimeUpdate = () => {
-      const current = video.currentTime
-      const duration = video.duration
-      setProgress((current / duration) * 100)
+      const current = video.currentTime;
+      const duration = video.duration;
+      setProgress((current / duration) * 100);
 
       timestamps.forEach((timestamp) => {
         if (
           Math.floor(current) === Math.floor(timestamp.time) &&
           !timestamp.triggered
         ) {
-          setCurrentPopup(
-            `${timestamp.label} - Click to start the countdown`
-          )
-          setCountdown(10)
-          video.pause()
-          setIsPlaying(false)
-          setIsCountingDown(false)
+          setCurrentPopup(`${timestamp.label}`);
+          setCountdown(timestamp.countdownTime);
+          video.pause();
+          setIsPlaying(false);
+          setIsCountingDown(false);
 
           setTimestamps((prev) =>
             prev.map((t) =>
               t.time === timestamp.time ? { ...t, triggered: true } : t
             )
-          )
+          );
         }
-      })
-    }
+      });
+    };
 
     video.addEventListener('timeupdate', handleTimeUpdate)
 
@@ -71,6 +70,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.removeEventListener('timeupdate', handleTimeUpdate)
     }
   }, [timestamps])
+
+    // Keydown event listener for left and right arrow keys
+    useEffect(() => {
+      const handleKeyDown = (event: KeyboardEvent) => {
+        const video = videoRef.current;
+        if (!video) return;
+        if (event.key === 'ArrowRight') {
+          video.currentTime = Math.min(video.currentTime + 5, video.duration);
+        } else if (event.key === 'ArrowLeft') {
+          video.currentTime = Math.max(video.currentTime - 5, 0);
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }, []);
 
   const togglePlayPause = () => {
     const video = videoRef.current
@@ -205,8 +221,16 @@ const handlePopupAction = (action: 'start' | 'stop' | 'close') => {
   }
 };
 
+const formatTime = (timeInSeconds: number) => {
+  const hours = Math.floor(timeInSeconds / 3600);
+  const minutes = Math.floor((timeInSeconds % 3600) / 60);
+  const seconds = Math.floor(timeInSeconds % 60);
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+};
+
   return (
-    <div className="relative w-full max-w-5xl mx-auto bg-black">
+    <div className="flex justify-center items-center h-screen">
+      <div className="relative w-full max-w-5xl mx-auto bg-black">
       <video
         ref={videoRef}
         src={currentSrc}
@@ -217,31 +241,29 @@ const handlePopupAction = (action: 'start' | 'stop' | 'close') => {
       {/* Popup */}
       {currentPopup && (
         <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-black bg-opacity-30">
-          <div className="bg-white bg-opacity-90 text-black px-6 py-4 rounded shadow-lg flex flex-col items-center space-y-2 z-3">
-            <div>{currentPopup}</div>
+          <div className="bg-white bg-opacity-90 text-black px-6 py-4 rounded shadow-lg flex flex-col items-center z-3">
+            <div className="text-xl font-bold ">{currentPopup}</div>
             {countdown !== null && (
-              <div className="font-bold">
-                {`${Math.floor(countdown / 60).toString().padStart(2, '0')}:${(
-                  '0' + (countdown % 60)
-                ).slice(-2)}`}
-              </div>
+              <div className="font-bold p-4 pb-7 text-xl">
+                {formatTime(countdown)}
+            </div>
             )}
             <div className="flex space-x-4">
               <button
                 onClick={() => handlePopupAction('start')}
-                className="bg-blue-500 text-white px-4 py-2 rounded"
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
               >
                 Start
               </button>
               <button
                 onClick={() => handlePopupAction('stop')}
-                className="bg-red-500 text-white px-4 py-2 rounded"
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
               >
                 Stop
               </button>
               <button
                 onClick={() => handlePopupAction('close')}
-                className="bg-gray-500 text-white px-4 py-2 rounded"
+                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded"
               >
                 Close
               </button>
@@ -252,7 +274,6 @@ const handlePopupAction = (action: 'start' | 'stop' | 'close') => {
 
       {/* Controls */}
       <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 flex items-center space-x-4 px-4 py-2">
-        {/* Play/Pause Button */}
         <button
           onClick={togglePlayPause}
           className="text-white focus:outline-none"
@@ -294,24 +315,24 @@ const handlePopupAction = (action: 'start' | 'stop' | 'close') => {
           
           {/* Yellow markers for timestamps */}
           {timestamps.map((timestamp) => {
-            const markerPosition = (timestamp.time / (videoRef.current?.duration || 1)) * 100; // คำนวณตำแหน่งของ marker
+            const markerPosition = (timestamp.time / (videoRef.current?.duration || 1)) * 100;
             return (
               <div
                 key={timestamp.time}
                 className="absolute h-2 bg-yellow-500"
                 style={{
-                  left: `${markerPosition}%`, // ตำแหน่งที่ marker จะอยู่
+                  left: `${markerPosition}%`,
                   top: 0,
-                  width: '2px', // ปรับความกว้างของ marker ที่นี่
+                  width: '4px',
                   height: '100%',
-                  transform: 'translateX(-50%)', // ให้อยู่ตรงกลาง
+                  transform: 'translateX(-50%)',
                 }}
               />
             );
           })}
         </div>
 
-        {/* Current Time / Duration */}
+        {/* Current Time */}
         <div className="text-white text-sm">
           {videoRef.current
             ? `${Math.floor(videoRef.current.currentTime / 60).toString().padStart(2, '0')}:${(
@@ -330,14 +351,15 @@ const handlePopupAction = (action: 'start' | 'stop' | 'close') => {
           step="0.1"
           value={volume}
           onChange={handleVolumeChange}
-          className="w-32"
+          className="w-28 appearance-none bg-white h-2 rounded-full"
+          style={{accentColor: 'white'}}
         />
 
         {/* Playback Rate Control */}
         <select
           onChange={handlePlaybackRateChange}
           value={playbackRate}
-          className="bg-gray-700 text-white"
+          className="bg-gray-700 text-white p-0.5 rounded-md"
         >
           <option value="0.5">0.5x</option>
           <option value="1">1x</option>
@@ -349,7 +371,7 @@ const handlePopupAction = (action: 'start' | 'stop' | 'close') => {
         <select
           onChange={handleQualityChange}
           value={quality}
-          className="bg-gray-700 text-white"
+          className="bg-gray-700 text-white p-0.5 rounded-md"
         >
           {sources.map((source) => (
             <option key={source.quality} value={source.quality}>
@@ -391,6 +413,7 @@ const handlePopupAction = (action: 'start' | 'stop' | 'close') => {
           )}
         </button>
       </div>
+    </div>
     </div>
   )
 }
