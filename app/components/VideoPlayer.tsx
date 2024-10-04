@@ -28,6 +28,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [volume, setVolume] = useState(1)
   const [playbackRate, setPlaybackRate] = useState(1)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isSound, setIsSound] = useState(true);
   const [currentPopup, setCurrentPopup] = useState<string | null>(null)
   const [countdown, setCountdown] = useState<number | null>(null)
   const [isCountingDown, setIsCountingDown] = useState(false)
@@ -101,14 +102,49 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   }
 
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value);
+  useEffect(() => {
+    const savedVolume = localStorage.getItem('videoVolume');
+    if (savedVolume) {
+      const parsedVolume = parseFloat(savedVolume);
+      setVolume(parsedVolume);
+      setIsSound(parsedVolume > 0);
+      if (videoRef.current) {
+        videoRef.current.volume = parsedVolume;
+      }
+    }
+  }, []);
+
+  const increaseVolume = () => {
     const video = videoRef.current;
     if (video) {
-        video.volume = value;
-        setVolume(value);
+      const newVolume = Math.min(volume + 1, 1);
+      video.volume = newVolume;
+      setVolume(newVolume);
+      setIsSound(true);
+      localStorage.setItem('videoVolume', newVolume.toString());
     }
-};
+  };
+
+  const muteVideo = () => {
+    const video = videoRef.current;
+    if (video) {
+      video.volume = 0;
+      setVolume(0);
+      setIsSound(false);
+      localStorage.setItem('videoVolume', '0');
+    }
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(e.target.value);
+    const video = videoRef.current;
+    if (video) {
+      video.volume = newVolume;
+      setVolume(newVolume);
+      setIsSound(newVolume > 0);
+      localStorage.setItem('videoVolume', newVolume.toString());
+    }
+  };
 
   const handlePlaybackRateChange = (
     e: React.ChangeEvent<HTMLSelectElement>
@@ -228,6 +264,20 @@ const formatTime = (timeInSeconds: number) => {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
+const handleRewind = () => {
+  const video = videoRef.current;
+  if (video) {
+    video.currentTime = Math.max(video.currentTime - 5, 0);
+  }
+};
+
+const handleForward = () => {
+  const video = videoRef.current;
+  if (video) {
+    video.currentTime = Math.min(video.currentTime + 5, video.duration);
+  }
+};
+
   return (
     <div className="flex justify-center items-center h-screen">
       <div className="relative w-full max-w-5xl mx-auto bg-black">
@@ -280,27 +330,62 @@ const formatTime = (timeInSeconds: number) => {
           aria-label={isPlaying ? 'Pause' : 'Play'}
         >
           {isPlaying ? (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <rect x="6" y="4" width="4" height="16" />
-              <rect x="14" y="4" width="4" height="16" />
-            </svg>
+            <svg className="w-7 h-7 text-white"
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            width="24" height="24" fill="none"
+            viewBox="0 0 24 24">
+            <path stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9 6H8a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1Zm7 0h-1a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1Z"/>
+          </svg>
+          
           ) : (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <polygon points="5,3 19,12 5,21 5,3" />
-            </svg>
+            <svg className="w-7 h-7 text-white"
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            width="24" height="24" fill="none"
+            viewBox="0 0 24 24">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 18V6l8 6-8 6Z"/>
+          </svg>
+
           )}
+        </button>
+
+        {/* ฺ Backward Button */}
+        <button
+          onClick={handleRewind}
+          className="text-white focus:outline-none"
+          aria-label="Rewind 5 seconds"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14l-7-7 7-7zM19 5v14l-7-7 7-7z" />
+          </svg>
+        </button>
+
+        {/*  ฺForward Button */}
+        <button
+          onClick={handleForward}
+          className="text-white focus:outline-none"
+          aria-label="Forward 5 seconds"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14l7-7-7-7zM5 5v14l7-7-7-7z" />
+          </svg>
         </button>
 
         {/* Progress Bar */}
@@ -315,7 +400,8 @@ const formatTime = (timeInSeconds: number) => {
           
           {/* Yellow markers for timestamps */}
           {timestamps.map((timestamp) => {
-            const markerPosition = (timestamp.time / (videoRef.current?.duration || 1)) * 100;
+            const duration = videoRef.current?.duration || 1;
+            const markerPosition = (timestamp.time / duration) * 100;
             return (
               <div
                 key={timestamp.time}
@@ -344,6 +430,18 @@ const formatTime = (timeInSeconds: number) => {
         </div>
 
         {/* Volume Control */}
+        <button onClick={isSound ? muteVideo : increaseVolume} className="text-white" aria-label={isSound ? "Volume Mute" : "Volume Up"}>
+          {isSound ? (
+            <svg className="w-6 h-6 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+              <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.5 8.43A4.985 4.985 0 0 1 17 12a4.984 4.984 0 0 1-1.43 3.5m2.794 2.864A8.972 8.972 0 0 0 21 12a8.972 8.972 0 0 0-2.636-6.364M12 6.135v11.73a1 1 0 0 1-1.64.768L6 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2l4.36-3.633a1 1 0 0 1 1.64.768Z" />
+            </svg>
+          ) : (
+            <svg className="w-6 h-6 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+              <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.5 8.43A4.985 4.985 0 0 1 17 12c0 1.126-.5 2.5-1.5 3.5m2.864-9.864A8.972 8.972 0 0 1 21 12c0 2.023-.5 4.5-2.5 6M7.8 7.5l2.56-2.133a1 1 0 0 1 1.64.768V12m0 4.5v1.365a1 1 0 0 1-1.64.768L6 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1m1-4 14 14" />
+            </svg>
+          )}
+        </button>
+
         <input
           type="range"
           min="0"
@@ -381,35 +479,23 @@ const formatTime = (timeInSeconds: number) => {
         </select>
         <button onClick={toggleFullscreen} className="text-white">
           {isFullscreen ? (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6h12v12H6z"
-              />
-            </svg>
+            <svg className="w-6 h-6 text-white"
+            aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
+            width="24" height="24" fill="none" viewBox="0 0 24 24">
+            <path stroke="currentColor" stroke-linecap="round"
+            stroke-linejoin="round" stroke-width="2"
+            d="M5 9h4m0 0V5m0 4L4 4m15 5h-4m0 0V5m0 4 5-5M5 15h4m0 0v4m0-4-5 5m15-5h-4m0 0v4m0-4 5 5"/>
+          </svg>
+          
           ) : (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16m-7 6h7"
-              />
-            </svg>
+            <svg className="w-6 h-6 text-white"
+            aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
+            width="24" height="24" fill="none" viewBox="0 0 24 24">
+            <path stroke="currentColor" stroke-linecap="round"
+            stroke-linejoin="round" stroke-width="2"
+            d="M8 4H4m0 0v4m0-4 5 5m7-5h4m0 0v4m0-4-5 5M8 20H4m0 0v-4m0 4 5-5m7 5h4m0 0v-4m0 4-5-5"/>
+          </svg>
+
           )}
         </button>
       </div>
