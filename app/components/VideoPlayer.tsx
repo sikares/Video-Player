@@ -279,7 +279,7 @@ const handleForward = () => {
 };
 
   return (
-    <div className="flex justify-center items-center h-screen">
+    <div className="flex justify-center items-center h-screen overflow-hidden">
       <div className="relative w-full max-w-5xl mx-auto bg-black">
       <video
         ref={videoRef}
